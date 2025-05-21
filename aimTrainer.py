@@ -9,7 +9,7 @@ WIDTH, HEIGHT = 800, 600
 WIN = pygame.display.set_mode((WIDTH,HEIGHT))
 pygame.display.set_caption("Aim Trainer")
 
-TARGET_INCREMENT = 400
+TARGET_INCREMENT = 200
 TARGET_EVENT = pygame.USEREVENT
 
 TARGET_PADDING = 30
@@ -69,7 +69,7 @@ def main():
     while run:
         clock.tick(60)
         click = False
-        mouse_pos = pygame.mouse.get.pos()
+        mouse_pos = pygame.mouse.get_pos()
         
 
         for event in pygame.event.get():
@@ -95,7 +95,7 @@ def main():
                 misses += 1;  
             
             if click and target.collide(mouse_pos[0], mouse_pos[1]):
-                target.remove(target)
+                targets.remove(target)
                 target_pressed += 1
 
 
