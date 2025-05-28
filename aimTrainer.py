@@ -5,16 +5,47 @@ import pygame
 pygame.init()
 
 WIDTH, HEIGHT = 800, 600
-
-WIN = pygame.display.set_mode((WIDTH,HEIGHT))
+WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Aim Trainer")
 
-TARGET_INCREMENT = 400
+WHITE_THEME = {
+    "bg": "blue",
+    "bar": "grey",
+    "text": "black",
+    "end_text": "white"
+}
+
+BLACK_THEME = {
+    "bg": "black",
+    "bar": "white",
+    "text": "black",
+    "end_text": "white"
+}
+
+themes = {"white": WHITE_THEME, "black": BLACK_THEME}
+current_theme = "white"
+
+settings = {
+    "difficulty": "medium",
+    "theme": "white"
+}
+
+def apply_difficulty():
+    global TARGET_INCREMENT, LIVES
+    if settings["difficulty"] == "easy":
+        TARGET_INCREMENT = 1000
+        LIVES = 5
+    elif settings["difficulty"] == "medium":
+        TARGET_INCREMENT = 400
+        LIVES = 3
+    elif settings["difficulty"] == "hard":
+        TARGET_INCREMENT = 200
+        LIVES = 1
+
+apply_difficulty()
+
 TARGET_EVENT = pygame.USEREVENT
-
 TARGET_PADDING = 30
-
-LIVES = 3
 TOP_BAR_HEIGHT = 50
 
 LABEL_FONT = pygame.font.SysFont("comicsans", 24)
@@ -25,76 +56,67 @@ class Target:
     COLOR = "red"
     SECOND_COLOR = "white"
 
-    def __init__(self,x,y):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
         self.size = 0
         self.grow = True
-    
+
     def update(self):
         if self.size + self.GROWTH_RATE >= self.MAX_SIZE:
             self.grow = False
-        
+
         if self.grow:
             self.size += self.GROWTH_RATE
         else:
             self.size -= self.GROWTH_RATE
 
-    def draw(self,win):
+    def draw(self, win):
         pygame.draw.circle(win, self.COLOR, (self.x, self.y), self.size)
         pygame.draw.circle(win, self.SECOND_COLOR, (self.x, self.y), self.size * 0.8)
         pygame.draw.circle(win, self.COLOR, (self.x, self.y), self.size * 0.6)
         pygame.draw.circle(win, self.SECOND_COLOR, (self.x, self.y), self.size * 0.4)
-    
+
     def collide(self, x, y):
-        dis = math.sqrt((self.x - x)**2 + (self.y - y)**2)
+        dis = math.sqrt((self.x - x) ** 2 + (self.y - y) ** 2)
         return dis <= self.size
 
-
 def draw(win, targets):
-    win.fill("blue")
-
+    win.fill(themes[settings["theme"]]["bg"])
     for target in targets:
         target.draw(win)
-    
 
 def format_time(secs):
-    milli = math.floor(int(secs*1000%1000) / 100)
-    seconds = int(round(secs%60, 1))
+    milli = math.floor(int(secs * 1000 % 1000) / 100)
+    seconds = int(round(secs % 60, 1))
     minutes = int(secs // 60)
-
     return f"{minutes:02d}:{seconds:02d}.{milli}"
 
 def draw_top_bar(win, elapsed_time, targets_pressed, misses):
-    pygame.draw.rect(win, "grey", (0,0, WIDTH, TOP_BAR_HEIGHT))
-    time_label = LABEL_FONT.render(f"Time: {format_time(elapsed_time)}",1,"black")
-
+    pygame.draw.rect(win, themes[settings["theme"]]["bar"], (0, 0, WIDTH, TOP_BAR_HEIGHT))
+    text_color = themes[settings["theme"]]["text"]
+    time_label = LABEL_FONT.render(f"Time: {format_time(elapsed_time)}", 1, text_color)
     speed = round(targets_pressed / elapsed_time, 1)
-    speed_label = LABEL_FONT.render(f"Speed: {speed} t/s",1,"black")
+    speed_label = LABEL_FONT.render(f"Speed: {speed} t/s", 1, text_color)
+    hits_label = LABEL_FONT.render(f"Hits: {targets_pressed}", 1, text_color)
+    lives_label = LABEL_FONT.render(f"Lives: {LIVES - misses}", 1, text_color)
 
-    hits_label = LABEL_FONT.render(f"Hits: {targets_pressed}", 1, "black")
-
-    lives_label = LABEL_FONT.render(f"Lives: {LIVES - misses}", 1, "black")
-
-
-    win.blit(time_label, (5,5))
-    win.blit(speed_label, (200,5))
-    win.blit(hits_label, (450,5))
-    win.blit(lives_label, (650,5))
+    win.blit(time_label, (5, 5))
+    win.blit(speed_label, (200, 5))
+    win.blit(hits_label, (450, 5))
+    win.blit(lives_label, (650, 5))
 
 def end_screen(win, elapsed_time, targets_pressed, clicks):
-    win.fill("blue")
-    time_label = LABEL_FONT.render(f"Time: {format_time(elapsed_time)}",1,"white")
-
+    win.fill(themes[settings["theme"]]["bg"])
+    color = themes[settings["theme"]]["end_text"]
+    time_label = LABEL_FONT.render(f"Time: {format_time(elapsed_time)}", 1, color)
     speed = round(targets_pressed / elapsed_time, 1)
-    speed_label = LABEL_FONT.render(f"Speed: {speed} t/s",1,"white")
-
-    hits_label = LABEL_FONT.render(f"Hits: {targets_pressed}", 1, "white")
-
+    speed_label = LABEL_FONT.render(f"Speed: {speed} t/s", 1, color)
+    hits_label = LABEL_FONT.render(f"Hits: {targets_pressed}", 1, color)
     accuracy = round(targets_pressed / clicks * 100, 1)
-    accuracy_label = LABEL_FONT.render(f"Accuracy: {accuracy}", 1, "white")
+    accuracy_label = LABEL_FONT.render(f"Accuracy: {accuracy}", 1, color)
 
-    win.blit(time_label,(get_middle(time_label), 100))
+    win.blit(time_label, (get_middle(time_label), 100))
     win.blit(speed_label, (get_middle(speed_label), 200))
     win.blit(hits_label, (get_middle(hits_label), 300))
     win.blit(accuracy_label, (get_middle(accuracy_label), 400))
@@ -105,20 +127,65 @@ def end_screen(win, elapsed_time, targets_pressed, clicks):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 quit()
-            
             if event.type == pygame.KEYDOWN:
                 run = False
                 break
 
-
-
 def get_middle(surface):
-    return WIDTH / 2 - surface.get_width()/2
+    return WIDTH / 2 - surface.get_width() / 2
+
+def settings_screen():
+    selecting = True
+    while selecting:
+        WIN.fill("blue")
+        title = LABEL_FONT.render("START", 1, "white")
+        # Use black color if theme is selected as "black", else white
+        theme_color = "black" if settings["theme"] == "black" else "white"
+        theme_label = LABEL_FONT.render(f"Theme (T): {settings['theme']}", 1, theme_color)
+
+        # Use black if difficulty is selected as "hard", else white (as an example)
+        # Or use a dict for more control
+        difficulty_color = "" 
+        if settings['difficulty'] == 'medium':
+            difficulty_color = "yellow"
+        elif settings['difficulty'] == 'hard':
+            difficulty_color = "red"
+        else:
+            difficulty_color = "green"
+
+        
+        diff_label = LABEL_FONT.render(f"Difficulty (1-Easy, 2-Medium, 3-Hard): {settings['difficulty']}", 1, difficulty_color)
+        start_label = LABEL_FONT.render("Press Enter to Start", 1, "white")
+
+        WIN.blit(title, (get_middle(title), 100))
+        WIN.blit(theme_label, (get_middle(theme_label), 200))
+        WIN.blit(diff_label, (get_middle(diff_label), 300))
+        WIN.blit(start_label, (get_middle(start_label), 400))
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    selecting = False
+                if event.key == pygame.K_t:
+                    settings["theme"] = "black" if settings["theme"] == "white" else "white"
+                if event.key == pygame.K_1:
+                    settings["difficulty"] = "easy"
+                    apply_difficulty()
+                if event.key == pygame.K_2:
+                    settings["difficulty"] = "medium"
+                    apply_difficulty()
+                if event.key == pygame.K_3:
+                    settings["difficulty"] = "hard"
+                    apply_difficulty()
+
 def main():
+    settings_screen()
     run = True
     targets = []
     clock = pygame.time.Clock()
-
     targets_pressed = 0
     clicks = 0
     misses = 0
@@ -131,45 +198,37 @@ def main():
         click = False
         mouse_pos = pygame.mouse.get_pos()
         elapsed_time = time.time() - start_time
-        
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 break
-            
             if event.type == TARGET_EVENT:
                 x = random.randint(TARGET_PADDING, WIDTH - TARGET_PADDING)
-                y= random.randint(TARGET_PADDING + TOP_BAR_HEIGHT, HEIGHT - TARGET_PADDING)
-                target = Target(x,y)
-                targets.append(target)
-            
+                y = random.randint(TARGET_PADDING + TOP_BAR_HEIGHT, HEIGHT - TARGET_PADDING)
+                targets.append(Target(x, y))
             if event.type == pygame.MOUSEBUTTONDOWN:
                 click = True
                 clicks += 1
 
-        for target in targets:
-            target.update() 
-
+        for target in targets[:]:
+            target.update()
             if target.size <= 0:
                 targets.remove(target)
-                misses += 1;  
-            
+                misses += 1
             if click and target.collide(mouse_pos[0], mouse_pos[1]):
                 targets.remove(target)
                 targets_pressed += 1
-            
-            if misses >= LIVES:
-                end_screen(WIN, elapsed_time, targets_pressed, clicks)
 
+        if misses >= LIVES:
+            end_screen(WIN, elapsed_time, targets_pressed, clicks)
+            return
 
-
-        draw(WIN,targets) 
+        draw(WIN, targets)
         draw_top_bar(WIN, elapsed_time, targets_pressed, misses)
         pygame.display.update()
 
-    pygame.quit();
-
+    pygame.quit()
 
 if __name__ == "__main__":
     main()
