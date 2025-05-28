@@ -1,6 +1,8 @@
 import math
 import random
 import time
+import json
+import os
 import pygame
 pygame.init()
 
@@ -27,8 +29,21 @@ current_theme = "white"
 
 settings = {
     "difficulty": "medium",
-    "theme": "white"
+    "theme": "white",
+    "player_name": ""
 }
+
+# --- CHANGES MADE ---
+HIGHSCORE_FILE = "highscores.json"
+
+# --- CHANGES MADE ---
+def get_difficulty_multiplier():
+    if settings["difficulty"] == "easy":
+        return 1
+    elif settings["difficulty"] == "medium":
+        return 2
+    elif settings["difficulty"] == "hard":
+        return 3
 
 def apply_difficulty():
     global TARGET_INCREMENT, LIVES
@@ -106,6 +121,39 @@ def draw_top_bar(win, elapsed_time, targets_pressed, misses):
     win.blit(hits_label, (450, 5))
     win.blit(lives_label, (650, 5))
 
+# --- CHANGES MADE ---
+def load_highscores():
+    if os.path.exists(HIGHSCORE_FILE):
+        with open(HIGHSCORE_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+def save_highscores(scores):
+    with open(HIGHSCORE_FILE, 'w') as f:
+        json.dump(scores, f, indent=2)
+
+def update_highscores(player, score):
+    highscores = load_highscores()
+    updated = False
+    for entry in highscores:
+        if entry['name'] == player:
+            if entry['score'] < score:
+                entry['score'] = score
+            updated = True
+            break
+    if not updated:
+        highscores.append({"name": player, "score": score})
+    highscores.sort(key=lambda x: x['score'], reverse=True)
+    save_highscores(highscores[:5])
+
+def draw_highscores(win):
+    highscores = load_highscores()
+    y = 450
+    for i, entry in enumerate(highscores):
+        label = LABEL_FONT.render(f"{i+1}. {entry['name']} - {entry['score']}", 1, themes[settings["theme"]]["end_text"])
+        win.blit(label, (get_middle(label), y))
+        y += 30
+
 def end_screen(win, elapsed_time, targets_pressed, clicks):
     win.fill(themes[settings["theme"]]["bg"])
     color = themes[settings["theme"]]["end_text"]
@@ -116,10 +164,15 @@ def end_screen(win, elapsed_time, targets_pressed, clicks):
     accuracy = round(targets_pressed / clicks * 100, 1)
     accuracy_label = LABEL_FONT.render(f"Accuracy: {accuracy}", 1, color)
 
+    score = round(targets_pressed * get_difficulty_multiplier())
+    update_highscores(settings["player_name"], score)
+
     win.blit(time_label, (get_middle(time_label), 100))
-    win.blit(speed_label, (get_middle(speed_label), 200))
-    win.blit(hits_label, (get_middle(hits_label), 300))
-    win.blit(accuracy_label, (get_middle(accuracy_label), 400))
+    win.blit(speed_label, (get_middle(speed_label), 150))
+    win.blit(hits_label, (get_middle(hits_label), 200))
+    win.blit(accuracy_label, (get_middle(accuracy_label), 250))
+
+    draw_highscores(win)
 
     pygame.display.update()
     run = True
@@ -134,32 +187,26 @@ def end_screen(win, elapsed_time, targets_pressed, clicks):
 def get_middle(surface):
     return WIDTH / 2 - surface.get_width() / 2
 
+# --- CHANGES MADE ---
 def settings_screen():
     selecting = True
+    input_active = True
+    player_name = ""
     while selecting:
         WIN.fill("blue")
         title = LABEL_FONT.render("START", 1, "white")
-        # Use black color if theme is selected as "black", else white
         theme_color = "black" if settings["theme"] == "black" else "white"
         theme_label = LABEL_FONT.render(f"Theme (T): {settings['theme']}", 1, theme_color)
 
-        # Use black if difficulty is selected as "hard", else white (as an example)
-        # Or use a dict for more control
-        difficulty_color = "" 
-        if settings['difficulty'] == 'medium':
-            difficulty_color = "yellow"
-        elif settings['difficulty'] == 'hard':
-            difficulty_color = "red"
-        else:
-            difficulty_color = "green"
-
-        
+        difficulty_color = "yellow" if settings['difficulty'] == 'medium' else ("red" if settings['difficulty'] == 'hard' else "green")
         diff_label = LABEL_FONT.render(f"Difficulty (1-Easy, 2-Medium, 3-Hard): {settings['difficulty']}", 1, difficulty_color)
+        name_label = LABEL_FONT.render(f"Enter Name: {player_name}|", 1, "white")
         start_label = LABEL_FONT.render("Press Enter to Start", 1, "white")
 
-        WIN.blit(title, (get_middle(title), 100))
-        WIN.blit(theme_label, (get_middle(theme_label), 200))
-        WIN.blit(diff_label, (get_middle(diff_label), 300))
+        WIN.blit(title, (get_middle(title), 50))
+        WIN.blit(theme_label, (get_middle(theme_label), 150))
+        WIN.blit(diff_label, (get_middle(diff_label), 200))
+        WIN.blit(name_label, (get_middle(name_label), 300))
         WIN.blit(start_label, (get_middle(start_label), 400))
         pygame.display.update()
 
@@ -167,8 +214,15 @@ def settings_screen():
             if event.type == pygame.QUIT:
                 quit()
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    selecting = False
+                if input_active:
+                    if event.key == pygame.K_RETURN:
+                        if player_name.strip() != "":
+                            settings["player_name"] = player_name.strip()
+                            selecting = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        player_name = player_name[:-1]
+                    elif event.unicode.isprintable() and len(player_name) < 15:
+                        player_name += event.unicode
                 if event.key == pygame.K_t:
                     settings["theme"] = "black" if settings["theme"] == "white" else "white"
                 if event.key == pygame.K_1:
