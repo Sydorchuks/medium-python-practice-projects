@@ -174,15 +174,28 @@ def end_screen(win, elapsed_time, targets_pressed, clicks):
 
     draw_highscores(win)
 
+    button_width, button_height = 200, 50
+    button_x = WIDTH // 2 - button_width // 2
+    button_y = 350
+    pygame.draw.rect(win, "green", (button_x, button_y, button_width, button_height))
+    button_label = LABEL_FONT.render("Play Again", 1, "white")
+    win.blit(button_label, (get_middle(button_label), button_y + 10))
+
     pygame.display.update()
+
     run = True
     while run:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 quit()
-            if event.type == pygame.KEYDOWN:
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 run = False
-                break
+                main()  # Start new game
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mx, my = pygame.mouse.get_pos()
+                if button_x <= mx <= button_x + button_width and button_y <= my <= button_y + button_height:
+                    run = False
+                    main()  # Start new game
 
 def get_middle(surface):
     return WIDTH / 2 - surface.get_width() / 2
